@@ -1,0 +1,43 @@
+# This workflow will build image using the docker file present in third repo  and push it to azure
+name: Azure build
+
+
+permissions:
+  contents: read
+  id-token: write
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    environment: dev
+
+
+    steps:
+      - name: Checkout token-template
+        uses: actions/checkout@v3
+
+      - name: Trigger workflow in orchestrator repo usecase-token builder
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.ACCESS_PAT }}
+          script: |
+            const { data: workflows } = await github.rest.actions.listRepoWorkflows({
+              owner: 'blinklabs-ai',
+              repo: 'blinklabs-backend-orchestrator'
+            });
+            
+            await github.rest.actions.createWorkflowDispatch({
+              owner: 'blinklabs-ai',
+              repo: 'blinklabs-backend-orchestrator',
+              workflow_id: 'usecase-token-builder.yml',
+              ref: 'master', // Specify the branch or commit SHA to run the workflow on
+              inputs: {
+                branch_name: 'dev',
+                commit_id: "${{ github.sha }}"
+              }
+            });
